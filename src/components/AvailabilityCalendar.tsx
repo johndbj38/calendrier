@@ -286,12 +286,12 @@ const res = await fetch(`${API_BASE}/api/availability`);
             </div>
 
             <div className="text-sm text-gray-600">
-              <p>Prix à la nuit : <strong>{PRICE_PER_NIGHT}€</strong></p>
+              <p>Prix par nuit pour 2 personnes : <strong>{PRICE_PER_NIGHT}€</strong></p>
               <p>Nuits sélectionnées : <strong>{nights}</strong></p>
             </div>
           </div>
 
-          {copied && <p className="mt-4 text-green-600">Le formulaire a été copié. Envoyez nous votre formulaire à {TARGET_EMAIL}</p>}
+          {copied && <p className="mt-6 text-green-600">Le formulaire a été copié. Envoyez nous votre formulaire à {TARGET_EMAIL}</p>}
         </form>
       </div>
     </section>
