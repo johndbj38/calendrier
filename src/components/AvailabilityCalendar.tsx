@@ -37,7 +37,8 @@ export default function AvailabilityCalendar() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('http://localhost:4000/api/availability');
+        const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
+const res = await fetch(`${API_BASE}/api/availability`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const ev: EventItem[] = json.events || [];
