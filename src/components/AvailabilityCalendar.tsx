@@ -183,7 +183,7 @@ const res = await fetch(`${API_BASE}/api/availability`);
   return (
     <section id="availability" className="py-12 bg-white">
       <div className="max-w-3xl mx-auto px-4">
-        <h3 className="text-2xl font-bold mb-6 text-center">Voir les disponibilités & Réserver</h3>
+        <h3 className="text-2xl font-bold mb-6 text-center">Calendrier & Réservations</h3>
 
         {loading && <p className="text-center">Chargement…</p>}
         {error && <p className="text-red-500 text-center">Erreur (availability) : {error}</p>}

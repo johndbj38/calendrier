@@ -172,7 +172,7 @@ function App() {
                 <img
                   src={imageUrl}
                   alt={`Tiny Home ${index + 1}`}
-                  loading="lazy"
+                  loading="fast"
                   decoding="async"
                   className="w-full h-80 object-cover transform group-hover:scale-110 transition-transform duration-500"
                 />
