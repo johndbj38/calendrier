@@ -29,6 +29,7 @@ export default function AvailabilityCalendar() {
 
   const [formError, setFormError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
 
   useEffect(() => {
     // Si tu utilises déjà un endpoint /api/availability côté backend, garde-le.
@@ -38,7 +39,7 @@ export default function AvailabilityCalendar() {
       setError(null);
       try {
         const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
-const res = await fetch(`${API_BASE}/api/availability`);
+        const res = await fetch(`${API_BASE}/api/availability`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         const ev: EventItem[] = json.events || [];
@@ -148,7 +149,6 @@ const res = await fetch(`${API_BASE}/api/availability`);
   }
 
   async function copyToClipboard() {
-    setCopied(false);
     setFormError(null);
     if (!validateForm()) return;
     const text = `À : ${TARGET_EMAIL}\n\n${buildMailBody()}`;
@@ -156,19 +156,43 @@ const res = await fetch(`${API_BASE}/api/availability`);
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // fallback
+        // fallback pour anciens navigateurs
         const textarea = document.createElement('textarea');
         textarea.value = text;
+        textarea.style.position = 'fixed'; // évite le scroll
+        textarea.style.left = '-9999px';
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
-        textarea.remove();
+        document.body.removeChild(textarea);
       }
+      // on garde l'état "copied" à true et NE L'ANNULONS PAS,
+      // ainsi le message reste affiché en permanence
       setCopied(true);
-      // reset message after 3s
-      setTimeout(() => setCopied(false), 3000);
-    } catch (err) {
+    } catch (err: any) {
       setFormError('Impossible de copier dans le presse-papiers.');
+    }
+  }
+
+  async function copyEmailOnly() {
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(TARGET_EMAIL);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = TARGET_EMAIL;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+      }
+      setEmailCopied(true);
+      // petit feedback visuel temporaire pour "adresse copiée"
+      setTimeout(() => setEmailCopied(false), 2500);
+    } catch (err: any) {
+      setFormError('Impossible de copier l\'adresse e-mail.');
     }
   }
 
@@ -268,13 +292,6 @@ const res = await fetch(`${API_BASE}/api/availability`);
 
           <div className="mt-6 flex flex-col md:flex-row items-center gap-3 justify-between">
             <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={copyToClipboard}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
-              >
-                Copier le formulaire.
-              </button>
 
               <button
                 type="button"
@@ -282,6 +299,14 @@ const res = await fetch(`${API_BASE}/api/availability`);
                 className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition"
               >
                 Envoyer la demande de reservation (pré‑rempli)
+              </button>
+
+              <button
+                type="button"
+                onClick={copyToClipboard}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition"
+              >
+                Copier le formulaire.
               </button>
             </div>
 
@@ -291,7 +316,36 @@ const res = await fetch(`${API_BASE}/api/availability`);
             </div>
           </div>
 
-          {copied && <p className="mt-9 text-green-600">Le formulaire a été copié. Envoyez nous votre formulaire à {TARGET_EMAIL}</p>}
+          {/* Message persistant après copie */}
+          {copied && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="mt-6 p-4 rounded-md border bg-green-50 border-green-200 text-green-800 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
+            >
+              <div>
+                <p className="mb-1 font-medium">Le formulaire a été copié.</p>
+                <p>
+                  Envoyez-nous votre formulaire à{' '}
+                  <a href={`mailto:${TARGET_EMAIL}`} className="underline font-semibold">
+                    {TARGET_EMAIL}
+                  </a>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={copyEmailOnly}
+                  className="bg-white border px-3 py-1 rounded-md text-sm hover:bg-gray-50 transition"
+                >
+                  {emailCopied ? 'Adresse copiée ✓' : 'Copier l\'adresse'}
+                </button>
+                {/* Optionnel : bouton pour masquer le message si l'utilisateur le souhaite */}
+                {/* <button type="button" onClick={() => setCopied(false)} className="text-sm text-gray-600 underline">Masquer</button> */}
+              </div>
+            </div>
+          )}
         </form>
       </div>
     </section>
