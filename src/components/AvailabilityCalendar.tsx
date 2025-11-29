@@ -10,7 +10,18 @@ type EventItem = {
   end: string | null;
 };
 
-const PRICE_PER_NIGHT = 139; // € / nuit
+const DEFAULT_PRICE_PER_NIGHT = 139; // € / nuit par défaut
+
+// Définition des prix spéciaux par date
+// Format: { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD', price: Number }
+// Les dates sont inclusives.
+const SPECIAL_PRICES = [
+  { start: '2025-12-24', end: '2025-12-26', price: 250 }, // Noël 2025
+  { start: '2026-02-14', end: '2026-02-14', price: 180 }, // Saint-Valentin 2026
+  // Ajoute d'autres dates spéciales ici
+  // Exemple: { start: '2026-01-01', end: '2026-01-02', price: 200 }, // Nouvel An
+];
+
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
 
 export default function AvailabilityCalendar() {
@@ -32,8 +43,6 @@ export default function AvailabilityCalendar() {
   const [emailCopied, setEmailCopied] = useState(false);
 
   useEffect(() => {
-    // Si tu utilises déjà un endpoint /api/availability côté backend, garde-le.
-    // Sinon cette partie renverra events: [] (on peut laisser comme fallback).
     async function fetchEvents() {
       setLoading(true);
       setError(null);
@@ -56,7 +65,6 @@ export default function AvailabilityCalendar() {
         }
         setDisabledSet(s);
       } catch (err: any) {
-        // en dev on ignore si endpoint indisponible
         setError(err.message || 'Erreur inconnue');
         setDisabledSet(new Set());
       } finally {
@@ -88,11 +96,34 @@ export default function AvailabilityCalendar() {
     const end = new Date(range[1]);
     start.setHours(0, 0, 0, 0);
     end.setHours(0, 0, 0, 0);
+
     const msPerDay = 1000 * 60 * 60 * 24;
     const diff = Math.round((end.getTime() - start.getTime()) / msPerDay);
     const nights = diff > 0 ? diff : 0;
-    const price = nights * PRICE_PER_NIGHT;
-    return { nights, price };
+
+    let totalPrice = 0;
+    if (nights > 0) {
+      for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
+        const currentDayYMD = dateToYMD(d);
+        let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
+
+        // Vérifier si la date actuelle est dans une période de prix spécial
+        for (const specialPrice of SPECIAL_PRICES) {
+          const specialStart = new Date(specialPrice.start);
+          const specialEnd = new Date(specialPrice.end);
+          specialStart.setHours(0,0,0,0); // Normaliser pour comparaison
+          specialEnd.setHours(0,0,0,0); // Normaliser pour comparaison
+
+          if (d.getTime() >= specialStart.getTime() && d.getTime() <= specialEnd.getTime()) {
+            priceForThisNight = specialPrice.price;
+            break; // On a trouvé un prix spécial pour cette nuit, pas besoin de chercher plus
+          }
+        }
+        totalPrice += priceForThisNight;
+      }
+    }
+
+    return { nights, price: totalPrice };
   }
 
   const { nights, price } = calcNightsAndPrice(range);
@@ -156,18 +187,15 @@ export default function AvailabilityCalendar() {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(text);
       } else {
-        // fallback pour anciens navigateurs
         const textarea = document.createElement('textarea');
         textarea.value = text;
-        textarea.style.position = 'fixed'; // évite le scroll
+        textarea.style.position = 'fixed';
         textarea.style.left = '-9999px';
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
       }
-      // on garde l'état "copied" à true et NE L'ANNULONS PAS,
-      // ainsi le message reste affiché en permanence
       setCopied(true);
     } catch (err: any) {
       setFormError('Impossible de copier dans le presse-papiers.');
@@ -189,7 +217,6 @@ export default function AvailabilityCalendar() {
         document.body.removeChild(textarea);
       }
       setEmailCopied(true);
-      // petit feedback visuel temporaire pour "adresse copiée"
       setTimeout(() => setEmailCopied(false), 2500);
     } catch (err: any) {
       setFormError('Impossible de copier l\'adresse e-mail.');
@@ -200,9 +227,29 @@ export default function AvailabilityCalendar() {
     setFormError(null);
     if (!validateForm()) return;
     const mailto = buildMailtoLink();
-    // Ouvrir le client mail
     window.location.href = mailto;
   }
+
+  // Détermine le prix par nuit à afficher sous le formulaire
+  // Si une plage est sélectionnée et qu'un prix spécial s'applique à la première nuit, on l'affiche.
+  // Sinon, on affiche le prix par défaut.
+  const displayedPricePerNight = (() => {
+    if (range && range.length === 2) {
+      const startDay = new Date(range[0]);
+      startDay.setHours(0,0,0,0);
+      for (const specialPrice of SPECIAL_PRICES) {
+        const specialStart = new Date(specialPrice.start);
+        const specialEnd = new Date(specialPrice.end);
+        specialStart.setHours(0,0,0,0);
+        specialEnd.setHours(0,0,0,0);
+        if (startDay.getTime() >= specialStart.getTime() && startDay.getTime() <= specialEnd.getTime()) {
+          return specialPrice.price;
+        }
+      }
+    }
+    return DEFAULT_PRICE_PER_NIGHT;
+  })();
+
 
   return (
     <section id="availability" className="py-12 bg-white">
@@ -311,12 +358,11 @@ export default function AvailabilityCalendar() {
             </div>
 
             <div className="text-sm text-gray-600">
-              <p>Prix par nuit pour 2 personnes : <strong>{PRICE_PER_NIGHT}€</strong></p>
+              <p>Prix par nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></p>
               <p>Nuits sélectionnées : <strong>{nights}</strong></p>
             </div>
           </div>
 
-          {/* Message persistant après copie */}
           {copied && (
             <div
               role="status"
@@ -341,8 +387,6 @@ export default function AvailabilityCalendar() {
                 >
                   {emailCopied ? 'Adresse copiée ✓' : 'Copier l\'adresse'}
                 </button>
-                {/* Optionnel : bouton pour masquer le message si l'utilisateur le souhaite */}
-                {/* <button type="button" onClick={() => setCopied(false)} className="text-sm text-gray-600 underline">Masquer</button> */}
               </div>
             </div>
           )}
