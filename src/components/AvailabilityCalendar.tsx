@@ -291,7 +291,7 @@ const res = await fetch(`${API_BASE}/api/availability`);
             </div>
           </div>
 
-          {copied && <p className="mt-30 text-green-600">Le formulaire a été copié. Envoyez nous votre formulaire à {TARGET_EMAIL}</p>}
+          {copied && <p className="mt-9 text-green-600">Le formulaire a été copié. Envoyez nous votre formulaire à {TARGET_EMAIL}</p>}
         </form>
       </div>
     </section>
