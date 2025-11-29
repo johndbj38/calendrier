@@ -12,14 +12,11 @@ type EventItem = {
 
 const DEFAULT_PRICE_PER_NIGHT = 139; // € / nuit par défaut
 
-// Définition des prix spéciaux par date
-// Format: { start: 'YYYY-MM-DD', end: 'YYYY-MM-DD', price: Number }
-// Les dates sont inclusives.
+// Définition des prix spéciaux par date (inclusives)
 const SPECIAL_PRICES = [
   { start: '2025-12-24', end: '2025-12-26', price: 250 }, // Noël 2025
-  { start: '2026-02-14', end: '2026-02-14', price: 250 }, // Saint-Valentin 2026
-  // Ajoute d'autres dates spéciales ici
-  // Exemple: { start: '2026-01-01', end: '2026-01-02', price: 200 }, // Nouvel An
+  { start: '2026-02-14', end: '2026-02-14', price: 180 }, // Saint-Valentin 2026
+  // Ajoute d'autres périodes ici
 ];
 
 const TARGET_EMAIL = 'thetinyhome73@gmail.com';
@@ -90,8 +87,11 @@ export default function AvailabilityCalendar() {
     return d.toLocaleDateString('fr-FR');
   }
 
+  // calcule nuits, prix brut, remise et prix final
   function calcNightsAndPrice(range: Date[] | null) {
-    if (!range || range.length !== 2 || !range[0] || !range[1]) return { nights: 0, price: 0 };
+    if (!range || range.length !== 2 || !range[0] || !range[1]) {
+      return { nights: 0, price: 0, discountPercent: 0, discountAmount: 0, finalPrice: 0 };
+    }
     const start = new Date(range[0]);
     const end = new Date(range[1]);
     start.setHours(0, 0, 0, 0);
@@ -104,29 +104,51 @@ export default function AvailabilityCalendar() {
     let totalPrice = 0;
     if (nights > 0) {
       for (let d = new Date(start); d.getTime() < end.getTime(); d.setDate(d.getDate() + 1)) {
-        const currentDayYMD = dateToYMD(d);
         let priceForThisNight = DEFAULT_PRICE_PER_NIGHT;
 
-        // Vérifier si la date actuelle est dans une période de prix spécial
         for (const specialPrice of SPECIAL_PRICES) {
           const specialStart = new Date(specialPrice.start);
           const specialEnd = new Date(specialPrice.end);
-          specialStart.setHours(0,0,0,0); // Normaliser pour comparaison
-          specialEnd.setHours(0,0,0,0); // Normaliser pour comparaison
+          specialStart.setHours(0, 0, 0, 0);
+          specialEnd.setHours(0, 0, 0, 0);
 
           if (d.getTime() >= specialStart.getTime() && d.getTime() <= specialEnd.getTime()) {
             priceForThisNight = specialPrice.price;
-            break; // On a trouvé un prix spécial pour cette nuit, pas besoin de chercher plus
+            break;
           }
         }
         totalPrice += priceForThisNight;
       }
     }
 
-    return { nights, price: totalPrice };
+    // Remises selon durée
+    let discountPercent = 0;
+    if (nights >= 7) discountPercent = 15;
+    else if (nights >= 3) discountPercent = 10;
+    else discountPercent = 0;
+
+    // Calculer la remise en arrondissant aux centimes
+    const discountAmount = Math.round((totalPrice * discountPercent) * 100) / 10000; 
+    // Note: totalPrice en € (ex: 1000). totalPrice * discountPercent = valeur*%, ex 1000*15 = 15000.
+    // On divise par 100 pour obtenir pourcentage → 150. Pour arrondir aux centimes, on fait *100 /100 puis /100. 
+    // Ici on combine en une seule étape: (totalPrice * discountPercent / 100), arrondi cents:
+    // mais pour éviter erreurs d'arrondi, on utilise la formule équivalente ci-dessous :
+
+    const discountAmountCents = Math.round((totalPrice * discountPercent / 100) * 100); // en centimes
+    const discountAmountFinal = discountAmountCents / 100; // en euros
+
+    const finalPrice = Math.round((totalPrice - discountAmountFinal) * 100) / 100;
+
+    return {
+      nights,
+      price: Math.round(totalPrice * 100) / 100,
+      discountPercent,
+      discountAmount: discountAmountFinal,
+      finalPrice,
+    };
   }
 
-  const { nights, price } = calcNightsAndPrice(range);
+  const { nights, price, discountPercent, discountAmount, finalPrice } = calcNightsAndPrice(range);
 
   function validateForm() {
     setFormError(null);
@@ -163,7 +185,9 @@ export default function AvailabilityCalendar() {
       `Arrivée : ${startStr}`,
       `Départ : ${endStr}`,
       `Nuits : ${nights}`,
-      `Prix total : ${price.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
+      `Prix total (avant remise) : ${price.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
+      discountPercent > 0 ? `Remise appliquée : ${discountPercent}% (-${discountAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })})` : 'Remise appliquée : —',
+      `Prix total à payer : ${finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}`,
       '',
       'Merci de revenir vers moi au plus vite pour confirmer la réservation.',
     ].join('\n');
@@ -198,7 +222,7 @@ export default function AvailabilityCalendar() {
       }
       setCopied(true);
     } catch (err: any) {
-      setFormError('Impossible de copier dans le presse-papiers.');
+      setFormError("Impossible de copier dans le presse-papiers.");
     }
   }
 
@@ -219,7 +243,7 @@ export default function AvailabilityCalendar() {
       setEmailCopied(true);
       setTimeout(() => setEmailCopied(false), 2500);
     } catch (err: any) {
-      setFormError('Impossible de copier l\'adresse e-mail.');
+      setFormError("Impossible de copier l'adresse e-mail.");
     }
   }
 
@@ -230,18 +254,16 @@ export default function AvailabilityCalendar() {
     window.location.href = mailto;
   }
 
-  // Détermine le prix par nuit à afficher sous le formulaire
-  // Si une plage est sélectionnée et qu'un prix spécial s'applique à la première nuit, on l'affiche.
-  // Sinon, on affiche le prix par défaut.
+  // Détermine le prix par nuit affiché (prix de la première nuit)
   const displayedPricePerNight = (() => {
     if (range && range.length === 2) {
       const startDay = new Date(range[0]);
-      startDay.setHours(0,0,0,0);
+      startDay.setHours(0, 0, 0, 0);
       for (const specialPrice of SPECIAL_PRICES) {
         const specialStart = new Date(specialPrice.start);
         const specialEnd = new Date(specialPrice.end);
-        specialStart.setHours(0,0,0,0);
-        specialEnd.setHours(0,0,0,0);
+        specialStart.setHours(0, 0, 0, 0);
+        specialEnd.setHours(0, 0, 0, 0);
         if (startDay.getTime() >= specialStart.getTime() && startDay.getTime() <= specialEnd.getTime()) {
           return specialPrice.price;
         }
@@ -249,7 +271,6 @@ export default function AvailabilityCalendar() {
     }
     return DEFAULT_PRICE_PER_NIGHT;
   })();
-
 
   return (
     <section id="availability" className="py-12 bg-white">
@@ -329,7 +350,7 @@ export default function AvailabilityCalendar() {
               <label className="block text-sm font-medium text-gray-700">Prix total</label>
               <input
                 readOnly
-                value={price > 0 ? price.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '—'}
+                value={nights > 0 ? finalPrice.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }) : '—'}
                 className="mt-1 block w-full border rounded-md px-3 py-2 bg-white"
               />
             </div>
@@ -339,7 +360,6 @@ export default function AvailabilityCalendar() {
 
           <div className="mt-6 flex flex-col md:flex-row items-center gap-3 justify-between">
             <div className="flex gap-3">
-
               <button
                 type="button"
                 onClick={openMailClient}
@@ -360,6 +380,9 @@ export default function AvailabilityCalendar() {
             <div className="text-sm text-gray-600">
               <p>Prix par nuit : <strong>{displayedPricePerNight.toLocaleString('fr-FR')}€</strong></p>
               <p>Nuits sélectionnées : <strong>{nights}</strong></p>
+              {discountPercent > 0 && (
+                <p>Remise : <strong>{discountPercent}%</strong> (-{discountAmount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })})</p>
+              )}
             </div>
           </div>
 
