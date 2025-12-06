@@ -16,6 +16,7 @@ const DEFAULT_PRICE_PER_NIGHT = 139; // € / nuit par défaut
 const SPECIAL_PRICES = [
   { start: '2025-12-24', end: '2025-12-26', price: 250 }, // Noël 2025
   { start: '2026-02-14', end: '2026-02-14', price: 180 }, // Saint-Valentin 2026
+  { start: '2025-12-31', end: '2026-01-01', price: 250 }, // Nouvel an
   // Ajoute d'autres périodes ici
 ];
 
