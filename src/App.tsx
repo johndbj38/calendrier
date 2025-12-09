@@ -155,7 +155,7 @@ function App() {
             'https://i.imgur.com/HWvqhhM.jpg',
             'https://i.imgur.com/m6rM8W2.jpg',
             'https://imgur.com/vDQHmxR.jpg',
-            'https://imgur.com/9ZELmze.jpg',
+            'https://imgur.com/qQjCsKl.jpg',
             'https://i.imgur.com/5gSq0r6.jpg',
             'https://imgur.com/XV3y5VD.jpg',
             'https://imgur.com/0yIgOHu.jpg',
@@ -164,7 +164,7 @@ function App() {
             'https://i.imgur.com/wIHntLk.jpg',
             'https://i.imgur.com/AXLzhdy.jpg',
             'https://imgur.com/Dj8q05v.jpg',
-            'https://imgur.com/qQjCsKl.jpg',
+            'https://imgur.com/9ZELmze.jpg',
           ].map((imageUrl, index) => (
             <div
               key={index}
