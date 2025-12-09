@@ -161,8 +161,6 @@ function App() {
             'https://imgur.com/0yIgOHu.jpg',
             'https://imgur.com/HVHOIir.jpg',
             'https://imgur.com/u6jNTR1.jpg',
-            'https://i.imgur.com/wIHntLk.jpg',
-            'https://i.imgur.com/AXLzhdy.jpg',
             'https://imgur.com/Dj8q05v.jpg',
             'https://imgur.com/9ZELmze.jpg',
           ].map((imageUrl, index) => (
